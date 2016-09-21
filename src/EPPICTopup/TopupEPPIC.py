@@ -13,7 +13,7 @@ import MySQLdb
 from string import atof
 
 class TopupEPPIC:
-    
+
     def __init__(self):
         self.mysqluser='eppicweb'
         self.mysqlhost='localhost'
@@ -34,12 +34,12 @@ class TopupEPPIC:
         self.eppicdb="eppic_%s"%(self.version)
         self.mysqldb=self.eppicdb
         self.createTopupfolder()
-        getfile=getstatusoutput('ls -tr %s'%(self.pdbrepo))
-        if getfile[0]:
+        filesInRsyncDir=getstatusoutput('ls -tr %s'%(self.pdbrepo))
+        if filesInRsyncDir[0]:
             self.writeLog("ERROR: Can't get the latest PDB rsync log file in %s"%(self.pdbrepo))
             sys.exit(1)
-        self.rsyncfile="%s/%s"%(self.pdbrepo,getfile[1].split("\n")[-1])
-        
+        self.rsyncfile="%s/%s"%(self.pdbrepo, filesInRsyncDir[1].split("\n")[-1])
+
     def getUniprotVersion(self):
         universion=getstatusoutput("cat %s | grep LOCAL_UNIPROT_DB_NAME"%(self.eppicconf))
         if universion[0]:
@@ -48,8 +48,8 @@ class TopupEPPIC:
         else:
             self.version=universion[1].split("uniprot_")[-1]
             self.writeLog("INFO: UniProt version : %s"%(self.version))
-        
-        
+
+
     def createTopupfolder(self):
         self.inputDir="%s/input"%(self.workDir)
         mkd=getstatusoutput("mkdir %s"%(self.inputDir))
@@ -83,7 +83,7 @@ class TopupEPPIC:
         if mkd[0]:
             self.writeLog("ERROR: Can't create %s"%(self.qsubDir))
             sys.exit(1)
-        
+
     def parsePDBrsyncfile(self):
         self.writeLog("INFO: Parsing PDB rsync file")
         f=open(self.rsyncfile,'r').read()
@@ -92,8 +92,8 @@ class TopupEPPIC:
         self.allPDB=list(set(findall(r'mmCIF/\S+/(\S+).cif.gz\s+', f)))
         self.updatedPDB=[i for i in self.allPDB if i not in self.newPDB and i not in self.deletedPDB]
         self.writeLog("INFO: %d new,%d updated,%d deleted entries found"%(len(self.newPDB),len(self.updatedPDB),len(self.deletedPDB)))
-        
-        
+
+
     def prepareInputs(self):
         self.writeLog("INFO: preparing input lists")
         self.pdbinput="%s/pdbinput_%s.list"%(self.inputDir,self.today)
@@ -110,7 +110,7 @@ class TopupEPPIC:
         fo.write("%s\n"%("\n".join(self.deletedPDB)))
         fo.close()
         self.writeLog("INFO: input lists prepared")
-        
+
     def writeQsubscript(self):
         self.qsubscript="%s/topup_%s.sh"%(self.qsubDir,self.today)
         fo=open(self.qsubscript,'w')
@@ -129,7 +129,7 @@ class TopupEPPIC:
         fo.write("cp %s/logs/topup.e${JOB_ID}.${SGE_TASK_ID} %s/data/divided/$mid_pdb/$pdb/$pdb.e\n"%(self.outputDir,self.outputDir))
         fo.write("cp %s/logs/topup.o${JOB_ID}.${SGE_TASK_ID} %s/data/divided/$mid_pdb/$pdb/$pdb.o\n"%(self.outputDir,self.outputDir))
         fo.close()
-    
+
     def submitJobs(self):
         self.writeLog("INFO: Submitting jobs")
         if (len(self.newPDB)+len(self.updatedPDB))<1000:
@@ -145,12 +145,12 @@ class TopupEPPIC:
             self.writeLog("WARNING: more than 1000 jobs found.Jobs not submitted. Manually submit %s"%(self.qsubscript))
             mm="more than 1000 jobs found.Jobs not submitted. Manually submit %s"%(self.qsubscript)
             self.sendMessage(mm)
-    
+
     def writeLog(self,msg):
         t=strftime("%d-%m-%Y_%H:%M:%S",localtime())
         self.logfile.write("%s\t%s\n"%(t,msg))
         #print "%s\t%s\n"%(t,msg)
-        
+
     def connectDatabase(self):
         self.writeLog("INFO: Connecting to MySQL database")
         try:
@@ -159,7 +159,7 @@ class TopupEPPIC:
         except:
             self.writeLog("ERROR:Can't connect to mysql database")
             sys.exit(1)
-      
+
     def runQuery(self,sqlquery):
         try:
             self.cursor.execute(sqlquery)
@@ -228,13 +228,13 @@ class TopupEPPIC:
             fo.write("%s\t%d\n"%(ent[0],int(ent[1])))
         fo.close()
         self.writeLog("INFO: previous statistics file written")
-    
-    def getShiftsFile(self):
-        self.writeLog("INFO: downloading latest SHIFTS file")
+
+    def getSiftsFile(self):
+        self.writeLog("INFO: downloading latest SIFTS file")
         cmd="curl -s ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/text/pdb_chain_uniprot.lst > /data/dbs/uniprot/%s/pdb_chain_uniprot.lst"%(self.uniprot)
         chk=getstatusoutput(cmd)
         if chk[0]:
-            self.writeLog("ERROR: Can't download the latest SHIFTS file")
+            self.writeLog("ERROR: Can't download the latest SIFTS file")
             sys.exit(1)
     def sendMessage(self,mailmessage):
         #print mailmessage
@@ -248,7 +248,7 @@ class TopupEPPIC:
 
     def runAll(self):
         self.parsePDBrsyncfile()
-        self.getShiftsFile()
+        self.getSiftsFile()
         self.prepareInputs()
         self.writeQsubscript()
         self.getPreviousStat()

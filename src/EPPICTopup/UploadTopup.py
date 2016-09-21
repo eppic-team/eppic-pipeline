@@ -16,9 +16,9 @@ from datetime import date, timedelta
 
 
 class UploadTopup:
-    
+
     def __init__(self,offsetday):
-        
+
         self.mysqluser='eppicweb'
         self.mysqlhost='localhost'
         self.mysqlpasswd=''
@@ -40,7 +40,7 @@ class UploadTopup:
         self.statFile="%s/statistics_%s.html"%(self.workDir,self.today)
         self.filesDir="/data/webapps/files_%s"%(self.version)
         self.checkJobs()
-    
+
     def checkDate(self):
         if self.topupDay!=date.today():
             chk=raw_input("Do you want to proceed the upload part of the topup started on %s [Y/N] :"%(self.topupDay.strftime("%d-%m-%Y")))
@@ -56,13 +56,13 @@ class UploadTopup:
             chfkd2=getstatusoutput("ls %s/statistics_%s.html"%(self.workDir,self.today))
             if chfkd2[0]==0:
                 sys.exit(0)
-            
-        
+
+
     def checkJobs(self):
         qstatdump=getoutput('source /var/lib/gridengine/default/common/settings.sh;qstat -u eppicweb -q topup.q')
         qstatparse=findall(r'\s+\d+\s+\S+\s+topup\s+eppicweb\s+\S\s+\S+\s+\S+\s+\S+\s+\d+\s+(\d+)\n|\s+\d+\s+\S+\s+topup\s+eppicweb\s+\S\s+\S+\s+\S+\s+\S+\s+\d+\s+(\d+)',qstatdump)
         if len(qstatparse)>1:
-            self.runningJobs=[i(0) for i in qstatparse]
+            self.runningJobs=[i[0] for i in qstatparse]
         elif len(qstatparse)==1:
             self.runningJobs=[i[1] for i in qstatparse]
         else:
@@ -85,13 +85,13 @@ class UploadTopup:
         else:
             self.writeLog("ERROR: Something wrong !")
             sys.exit(1)
-        
-    
+
+
     def writeLog(self,msg):
         t=strftime("%d-%m-%Y_%H:%M:%S",localtime())
         self.logfile.write("%s\t%s\n"%(t,msg))
         #print "%s\t%s\n"%(t,msg)
-    
+
     def getUniprotVersion(self):
         universion=getstatusoutput("cat %s | grep LOCAL_UNIPROT_DB_NAME"%(self.eppicconf))
         if universion[0]:
@@ -100,19 +100,19 @@ class UploadTopup:
         else:
             self.version=universion[1].split("uniprot_")[-1]
             #self.writeLog("INFO: UniProt version : %s"%(self.version))
-    
-    
+
+
     def rsyncFolder(self):
         self.writeLog("INFO: synchronizing %s/output/data/divided to %s/divided"%(self.workDir,self.filesDir))
-        rsynccmd="rsync -az %s/output/data/divided %s/"%(self.workDir,self.filesDir) 
+        rsynccmd="rsync -az %s/output/data/divided %s/"%(self.workDir,self.filesDir)
         rsyncstat=getstatusoutput(rsynccmd)
         if rsyncstat[0]:
             self.writeLog("INFO: synchronizing %s/output/data/divided to %s/divided"%(self.workDir,self.filesDir))
             sys.exit(1)
         else:
             self.writeLog("INFO: synchronizing %s/output/data/divided to %s/divided Done!"%(self.workDir,self.filesDir))
-        
-    
+
+
     def createSymlink(self):
         newPdblist=open("%s/input/newPDB_%s.list"%(self.workDir,self.today),'r').read().split("\n")[:-1]
         for pdb in newPdblist:
@@ -121,7 +121,7 @@ class UploadTopup:
             if ck[0]:
                 self.writeLog("ERROR: can't run %s"%(symlinkcmd))
                 sys.exit(1)
-            
+
     def uploadFiles(self):
         uploadcmd="java -jar %s UploadToDb -D %s  -d %s/ -f %s/input/pdbinput_%s.list -F  > /dev/null"%(self.eppictoosjar,self.eppicdb,self.filesDir,self.workDir,self.today)
         ck=getstatusoutput(uploadcmd)
@@ -160,8 +160,8 @@ class UploadTopup:
             queryout=-1
             sys.exit(1)
         return queryout
-    
-    
+
+
     def writeStatistics(self):
         new=atof(getoutput("cat %s/input/newPDB_%s.list | wc -w"%(self.workDir,self.today)))
         updated=atof(getoutput("cat %s/input/updatedPDB_%s.list | wc -w"%(self.workDir,self.today)))
@@ -191,7 +191,7 @@ class UploadTopup:
         j.uid=p.job_uid where length(jobId)=4 and c.hasUniProtRef and c.seqIdCutoff>0.59 and c.numHomologs>=10")[0][0])
         ChainHas10H60Pp=(ChainHas10H60P/ChainHasUniprot)*100
         ChainHas30H60P=atof(self.runQuery("select count(*) from ChainCluster c inner join PdbInfo as p on p.uid=c.pdbInfo_uid inner join Job as j on \
-        j.uid=p.job_uid where length(jobId)=4 and c.hasUniProtRef and c.seqIdCutoff>0.59 and c.numHomologs>=30")[0][0]) 
+        j.uid=p.job_uid where length(jobId)=4 and c.hasUniProtRef and c.seqIdCutoff>0.59 and c.numHomologs>=30")[0][0])
         ChainHas30H60Pp=(ChainHas30H60P/ChainHasUniprot)*100
         ChainHas50H60P=atof(self.runQuery("select count(*) from ChainCluster c inner join PdbInfo as p on p.uid=c.pdbInfo_uid inner join Job as j on \
         j.uid=p.job_uid where length(jobId)=4 and c.hasUniProtRef and c.seqIdCutoff>0.59 and c.numHomologs>=50")[0][0])
@@ -409,23 +409,21 @@ class UploadTopup:
                 sys.exit(1)
             else:
                 self.writeLog("INFO: Finished sucessfully and report sent")
-        
-    
-   
-                
-                
+
+
+
+
+
     def runAll(self):
         self.rsyncFolder()
         self.createSymlink()
         self.uploadFiles()
         self.removeObsolete()
         self.writeStatistics()
-        
+
 if __name__=="__main__":
     if len(sys.argv)>1:
         offsetdays=atoi(sys.argv[1])
     else:
         offsetdays=0
     p=UploadTopup(offsetdays)
-
-            
