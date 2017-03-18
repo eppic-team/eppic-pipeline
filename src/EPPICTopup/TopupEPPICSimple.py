@@ -11,6 +11,8 @@ from commands import getstatusoutput
 from re import findall
 import MySQLdb
 from string import atof
+from ftplib import FTP
+
 
 class TopupEPPIC:
 
@@ -28,7 +30,7 @@ class TopupEPPIC:
         self.logfile=open("%s/topup_%s.log"%(self.workDir,strftime("%d%m%Y",localtime())),'a')
         self.getUniprotVersion()
         self.uniprot="uniprot_%s"%(self.version)
-        self.eppicdb="eppic_%s"%(self.version)
+        self.eppicdb="eppic_3_0_%s"%(self.version)
         self.createTopupfolder()
         filesInRsyncDir=getstatusoutput('ls -tr %s'%(self.pdbrepo))
         if filesInRsyncDir[0]:
@@ -240,7 +242,7 @@ class TopupEPPIC:
         else:
             self.writeLog("INFO: message sent through mail")
     def getList(self):
-        cnx = mysql.connector.connect(read_default_file="~/.my.cnf",db=self.eppicdb)
+        cnx = MySQLdb.connect(read_default_file="~/.my.cnf",db=self.eppicdb)
         cursor = cnx.cursor()
 
         query = ("SELECT jobId FROM Job;")
@@ -254,7 +256,25 @@ class TopupEPPIC:
         cursor.close()
         cnx.close()
         return allDbIds
-
+    def getListFromPdbFtp(self):
+        localfilename=self.topupDir+"/all_pdb_ids.list"
+        file = open(localfilename, 'wb')
+        ftpserver="ftp.wwpdb.org"
+        ftp = FTP(ftpserver)
+        ftp.login()
+        filename="pub/pdb/derived_data/pdb_entry_type.txt"
+        ftp.retrbinary('RETR %s' % filename, file.write)
+        file = open(localfilename, "r")
+        allIds=[]
+        for line in file:
+            allIds.append(string.split(line,"\t")[1])
+        return allIds
+    def getMissingIds(self):
+        allDbIds=getList()
+        allIds=getListFromPdbFtp()
+        diff=list(set(allIds)-set(allDbIds))
+        self.newPDB=diff
+        print diff
     def runAll(self):
         self.getSiftsFile()
         self.prepareInputs()
@@ -263,6 +283,8 @@ class TopupEPPIC:
         self.submitJobs()
 if __name__=="__main__":
     p=TopupEPPIC()
-    print len(p.getList())
+    getMissingIds()
+    #print len(p.getList())
+    #p.getListFromPdbFtp()
     #p.parseInpuListFile(sys.argv[1])
     #p.runAll()
