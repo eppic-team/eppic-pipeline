@@ -143,7 +143,7 @@ class TopupEPPIC:
             self.sendMessage(mm)
 
     def writeLog(self,msg):
-        t=strftime("%d-%m-%Y_%H:%M:%S",localtime())
+        t=strftime("%Y-%m-%d_%H:%M:%S",localtime())
         self.logfile.write("%s\t%s\n"%(t,msg))
         #print "%s\t%s\n"%(t,msg)
 
@@ -278,6 +278,10 @@ class TopupEPPIC:
         allIds=set(sorted(self.getListFromPdbFtp()))
         diff=list(allIds.difference(allDbIds))
         self.newPDB=diff
+        self.allPDB=[]
+        self.updatedPDB=[]
+        self.deletedPDB=[]
+        self.writeLog("INFO: " + len(newPDB) " new, " + len(updatedPDB) + " updated, " + len(deletedPDB) " deleted")
     def runAll(self):
         self.getSiftsFile()
         self.prepareInputs()
