@@ -22,13 +22,13 @@ class TopupEPPIC:
         self.eppicconf='/home/eppicweb/.eppic.conf'
         self.pdbrepo="/data/dbs/pdb"
         self.topupDir="/home/eppicweb/topup"
-        self.today=strftime("%d-%m-%Y",localtime())
+        self.today=strftime("%Y-%m-%d",localtime())
         self.workDir="%s/%s"%(self.topupDir,self.today)
         mkd=getstatusoutput("mkdir %s"%(self.workDir))
         if mkd[0]:
             print "ERROR: Can't create %s"%(self.workDir)
             sys.exit(1)
-        self.logfile=open("%s/topup_%s.log"%(self.workDir,strftime("%d%m%Y",localtime())),'a')
+        self.logfile=open("%s/topup_%s.log"%(self.workDir,strftime("%Y-%m-%d",localtime())),'a')
         self.getUniprotVersion()
         self.uniprot="uniprot_%s"%(self.version)
         self.eppicdb="eppic_%s"%(self.version)
@@ -147,7 +147,7 @@ class TopupEPPIC:
             self.sendMessage(mm)
 
     def writeLog(self,msg):
-        t=strftime("%d-%m-%Y_%H:%M:%S",localtime())
+        t=strftime("%Y-%m-%d_%H:%M:%S",localtime())
         self.logfile.write("%s\t%s\n"%(t,msg))
         #print "%s\t%s\n"%(t,msg)
 

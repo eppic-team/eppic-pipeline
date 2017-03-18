@@ -29,7 +29,7 @@ class UploadTopup:
         self.topupDir="/home/eppicweb/topup"
         self.topupDay=date.today() -timedelta(offsetday)
         self.pdbrdate=self.topupDay - timedelta(1)
-        self.today=self.topupDay.strftime("%d-%m-%Y")
+        self.today=self.topupDay.strftime("%Y-%m-%d")
         self.workDir="%s/%s"%(self.topupDir,self.today)
         self.checkDate()
         self.logfile=open("%s/upload_%s.log"%(self.workDir,self.today),'a')
@@ -43,11 +43,11 @@ class UploadTopup:
 
     def checkDate(self):
         if self.topupDay!=date.today():
-            chk=raw_input("Do you want to proceed the upload part of the topup started on %s [Y/N] :"%(self.topupDay.strftime("%d-%m-%Y")))
+            chk=raw_input("Do you want to proceed the upload part of the topup started on %s [Y/N] :"%(self.topupDay.strftime("%Y-%m-%d")))
             if chk=="Y" or chk=="y" or chk=="yes":
-                print "Manual upload started for topup started on %s"%(self.topupDay.strftime("%d-%m-%Y"))
+                print "Manual upload started for topup started on %s"%(self.topupDay.strftime("%Y-%m-%d"))
             else:
-                print "Manual upload canceled for topup started on %s"%(self.topupDay.strftime("%d-%m-%Y"))
+                print "Manual upload canceled for topup started on %s"%(self.topupDay.strftime("%Y-%m-%d"))
                 exit(0)
         chfld=getstatusoutput("ls %s"%(self.workDir))
         if chfld[0]:
@@ -88,7 +88,7 @@ class UploadTopup:
 
 
     def writeLog(self,msg):
-        t=strftime("%d-%m-%Y_%H:%M:%S",localtime())
+        t=strftime("%Y-%m-%d_%H:%M:%S",localtime())
         self.logfile.write("%s\t%s\n"%(t,msg))
         #print "%s\t%s\n"%(t,msg)
 
@@ -228,7 +228,7 @@ class UploadTopup:
         fo.write("\t<img class=\"eppic-iframe-top-img\" src=\"resources/images/eppic-logo.png\">\n")
         fo.write("\t<div class=\"eppic-statistics\">\n")
         fo.write("\t<h1>EPPIC database statistics as of %s</h1>\n"%(self.today))
-        fo.write("\t<h3>Based on UniProt_%s and PDB release of %s</h3>\n"%(self.version,self.pdbrdate.strftime("%d-%m-%Y")))
+        fo.write("\t<h3>Based on UniProt_%s and PDB release of %s</h3>\n"%(self.version,self.pdbrdate.strftime("%Y-%m-%d")))
         fo.write("\t<h4>Values in []: absolute and percentual difference between before and after top-up</h4>\n")
         fo.write("\t<h2>Number of entries</h2>\n")
         fo.write("\t<table>\n")

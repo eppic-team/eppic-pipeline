@@ -21,22 +21,22 @@ class TopupEPPIC:
         self.eppicconf='/home/eppicweb/.eppic.conf'
         self.pdbrepo="/data/dbs/pdb"
         self.topupDir="/home/eppicweb/topup"
-        self.today=strftime("%d-%m-%Y",localtime())
+        self.today=strftime("%Y-%m-%d",localtime())
         self.workDir="%s/%s"%(self.topupDir,self.today)
         mkd=getstatusoutput("mkdir %s"%(self.workDir))
         if mkd[0]:
             print "ERROR: Can't create %s"%(self.workDir)
             sys.exit(1)
-        self.logfile=open("%s/topup_%s.log"%(self.workDir,strftime("%d%m%Y",localtime())),'a')
+        self.logfile=open("%s/topup_%s.log"%(self.workDir,strftime("%Y-%m-%d",localtime())),'a')
         self.getUniprotVersion()
         self.uniprot="uniprot_%s"%(self.version)
         self.eppicdb="eppic_3_0_%s"%(self.version)
         self.createTopupfolder()
-        filesInRsyncDir=getstatusoutput('ls -tr %s'%(self.pdbrepo))
-        if filesInRsyncDir[0]:
-            self.writeLog("ERROR: Can't get the latest PDB rsync log file in %s"%(self.pdbrepo))
-            sys.exit(1)
-        self.rsyncfile="%s/%s"%(self.pdbrepo, filesInRsyncDir[1].split("\n")[-1])
+        #filesInRsyncDir=getstatusoutput('ls -tr %s'%(self.pdbrepo))
+        #if filesInRsyncDir[0]:
+        #    self.writeLog("ERROR: Can't get the latest PDB rsync log file in %s"%(self.pdbrepo))
+        #    sys.exit(1)
+        #self.rsyncfile="%s/%s"%(self.pdbrepo, filesInRsyncDir[1].split("\n")[-1])
 
     def getUniprotVersion(self):
         universion=getstatusoutput("cat %s | grep LOCAL_UNIPROT_DB_NAME"%(self.eppicconf))
@@ -121,7 +121,7 @@ class TopupEPPIC:
         fo.write("if [ ! -d %s/data/all ]; then mkdir  %s/data/all; fi\n"%(self.outputDir,self.outputDir))
         fo.write("cd %s/data/all/\n"%(self.outputDir))
         fo.write("ln -s ../divided/$mid_pdb/$pdb $pdb\n")
-        fo.write("%s -i $pdb -a 1 -s -o %s/data/divided/$mid_pdb/$pdb -l -w -g %s\n"%(self.eppicpath,self.outputDir,self.eppicconf))
+        fo.write("%s -i $pdb -a 1 -s -o %s/data/divided/$mid_pdb/$pdb -l -w -P -g %s\n"%(self.eppicpath,self.outputDir,self.eppicconf))
         fo.write("cp %s/logs/topup.e${JOB_ID}.${SGE_TASK_ID} %s/data/divided/$mid_pdb/$pdb/$pdb.e\n"%(self.outputDir,self.outputDir))
         fo.write("cp %s/logs/topup.o${JOB_ID}.${SGE_TASK_ID} %s/data/divided/$mid_pdb/$pdb/$pdb.o\n"%(self.outputDir,self.outputDir))
         fo.close()
@@ -251,13 +251,13 @@ class TopupEPPIC:
 
         allDbIds=[]
 
-        for (jobId) in cursor:
-            allDbIds.append(jobId)
+        for (row) in cursor:
+            allDbIds.append(row[0])
         cursor.close()
         cnx.close()
         return allDbIds
     def getListFromPdbFtp(self):
-        localfilename=self.topupDir+"/all_pdb_ids.list"
+        localfilename=self.workDir+"/all_pdb_ids.list"
         file = open(localfilename, 'wb')
         ftpserver="ftp.wwpdb.org"
         ftp = FTP(ftpserver)
@@ -267,14 +267,17 @@ class TopupEPPIC:
         file = open(localfilename, "r")
         allIds=[]
         for line in file:
-            allIds.append(string.split(line,"\t")[1])
+            allIds.append(line.split("\t")[0])
         return allIds
     def getMissingIds(self):
-        allDbIds=getList()
-        allIds=getListFromPdbFtp()
-        diff=list(set(allIds)-set(allDbIds))
+        """
+        Gets all ids from pdb ftp and all ids from our db and finds the diff
+        assigning it to self.newPDB
+        """
+        allDbIds=sorted(self.getList())
+        allIds=set(sorted(self.getListFromPdbFtp()))
+        diff=list(allIds.difference(allDbIds))
         self.newPDB=diff
-        print diff
     def runAll(self):
         self.getSiftsFile()
         self.prepareInputs()
@@ -283,8 +286,5 @@ class TopupEPPIC:
         self.submitJobs()
 if __name__=="__main__":
     p=TopupEPPIC()
-    getMissingIds()
-    #print len(p.getList())
-    #p.getListFromPdbFtp()
-    #p.parseInpuListFile(sys.argv[1])
-    #p.runAll()
+    p.getMissingIds()
+    p.runAll()
