@@ -6,36 +6,43 @@ Created on Jan 28, 2015
 '''
 
 
-from time import localtime,strftime
+from time import localtime,strftime,time
 import sys
 from re import findall
 from commands import getoutput,getstatusoutput
 import MySQLdb
 from string import atof,atoi
 from datetime import date, timedelta
+from os import path
+from glob import iglob
+from ntpath import basename
 
 
 class UploadTopup:
 
     def __init__(self,offsetday):
 
-        self.mysqluser='eppicweb'
-        self.mysqlhost='localhost'
-        self.mysqlpasswd=''
         self.eppictoosjar='/home/eppicweb/software/jars/eppic-dbtools.jar'
         self.eppicpath='/home/eppicweb/software/bin/eppic'
         self.eppicconf='/home/eppicweb/.eppic.conf'
         self.pdbrepo="/data/dbs/pdb"
         self.topupDir="/home/eppicweb/topup"
-        self.topupDay=date.today() -timedelta(offsetday)
-        self.pdbrdate=self.topupDay - timedelta(1)
-        self.today=self.topupDay.strftime("%Y-%m-%d")
+        newestDirInTopup = max(iglob(self.topupDir+'/????-??-??'), key=path.getctime)
+        self.today=basename(newestDirInTopup)
+        newestDirMtime=path.getmtime(newestDirInTopup)
+        currentTime = time()
+        # sanity check: mtime shouldn't be older than a week
+        if (newestDirMtime<currentTime-7*24*60*60)
+            print "Newest dir in topup dir is older than a week! Exiting"
+            exit(1)
+        # the pdb release date: day when top-up is loaded (will be only a few days off from actual relase day)
+        self.pdbrdate=self.today
         self.workDir="%s/%s"%(self.topupDir,self.today)
         self.checkDate()
         self.logfile=open("%s/upload_%s.log"%(self.workDir,self.today),'a')
         self.getUniprotVersion()
         self.uniprot="uniprot_%s"%(self.version)
-        self.eppicdb="eppic_%s"%(self.version)
+        self.eppicdb="eppic_3_0_%s"%(self.version)
         self.mysqldb=self.eppicdb
         self.statFile="%s/statistics_%s.html"%(self.workDir,self.today)
         self.filesDir="/data/webapps/files_%s"%(self.version)
@@ -146,7 +153,7 @@ class UploadTopup:
     def connectDatabase(self):
         #self.writeLog("INFO: Connecting to MySQL database")
         try:
-            self.cnx=MySQLdb.connect(user=self.mysqluser,host=self.mysqlhost,passwd=self.mysqlpasswd,db=self.mysqldb)
+            self.cnx=MySQLdb.connect(read_default_file="~/.my.cnf",db=self.mysqldb)
             self.cursor=self.cnx.cursor()
         except:
             self.writeLog("ERROR:Can't connect to mysql database")
@@ -228,7 +235,7 @@ class UploadTopup:
         fo.write("\t<img class=\"eppic-iframe-top-img\" src=\"resources/images/eppic-logo.png\">\n")
         fo.write("\t<div class=\"eppic-statistics\">\n")
         fo.write("\t<h1>EPPIC database statistics as of %s</h1>\n"%(self.today))
-        fo.write("\t<h3>Based on UniProt_%s and PDB release of %s</h3>\n"%(self.version,self.pdbrdate.strftime("%Y-%m-%d")))
+        fo.write("\t<h3>Based on UniProt_%s and PDB release as of %s</h3>\n"%(self.version,self.pdbrdate.strftime("%Y-%m-%d")))
         fo.write("\t<h4>Values in []: absolute and percentual difference between before and after top-up</h4>\n")
         fo.write("\t<h2>Number of entries</h2>\n")
         fo.write("\t<table>\n")
