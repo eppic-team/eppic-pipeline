@@ -46,7 +46,7 @@ class UploadTopup:
         self.eppicdb="eppic_3_0_%s"%(self.version)
         self.mysqldb=self.eppicdb
         self.statFile="%s/statistics_%s.html"%(self.workDir,self.today)
-        self.filesDir="/data/webapps/files_%s"%(self.version)
+        self.filesDir="/data/webapps/files_%s/data"%(self.version)
         self.checkJobs()
 
     def checkDate(self):
@@ -115,17 +115,8 @@ class UploadTopup:
             self.writeLog("INFO: synchronizing %s/output/data/divided to %s/divided Done!"%(self.workDir,self.filesDir))
 
 
-    def createSymlink(self):
-        newPdblist=open("%s/input/newPDB_%s.list"%(self.workDir,self.today),'r').read().split("\n")[:-1]
-        for pdb in newPdblist:
-            symlinkcmd="cd %s;ln -s divided/%s/%s"%(self.filesDir,pdb[1:3],pdb)
-            ck=getstatusoutput(symlinkcmd)
-            if ck[0]:
-                self.writeLog("ERROR: can't run %s"%(symlinkcmd))
-                sys.exit(1)
-
     def uploadFiles(self):
-        uploadcmd="java -jar %s UploadToDb -D %s  -d %s/ -f %s/input/pdbinput_%s.list -F  > /dev/null"%(self.eppictoosjar,self.eppicdb,self.filesDir,self.workDir,self.today)
+        uploadcmd="java -jar %s UploadToDb -D %s -d %s/ -l -f %s/input/pdbinput_%s.list -F  > /dev/null"%(self.eppictoosjar,self.eppicdb,self.filesDir,self.workDir,self.today)
         ck=getstatusoutput(uploadcmd)
         if ck[0]:
             self.writeLog("ERROR: Problem in uploading data %s"%(ck[1]))
@@ -134,7 +125,7 @@ class UploadTopup:
     def removeObsolete(self):
         self.deletedEntries=atoi(getoutput("cat %s/input/deletedPDB_%s.list | wc -w"%(self.workDir,self.today)))
         if self.deletedEntries<20:
-            delcmd="java -jar %s UploadToDb -D %s -d %s/ -f %s/input/deletedPDB_%s.list -r  > /dev/null"%(self.eppictoosjar,self.eppicdb,self.filesDir,self.workDir,self.today)
+            delcmd="java -jar %s UploadToDb -D %s -d %s/ -l -f %s/input/deletedPDB_%s.list -r  > /dev/null"%(self.eppictoosjar,self.eppicdb,self.filesDir,self.workDir,self.today)
             ck=getstatusoutput(delcmd)
             if ck[0]:
                 self.writeLog("ERROR: Problem in deleteing obsolete entries %s"%(ck[1]))
@@ -418,7 +409,6 @@ class UploadTopup:
 
     def runAll(self):
         self.rsyncFolder()
-        self.createSymlink()
         self.uploadFiles()
         self.removeObsolete()
         self.writeStatistics()
