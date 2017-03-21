@@ -20,7 +20,7 @@ from ntpath import basename
 
 class UploadTopup:
 
-    def __init__(self,offsetday):
+    def __init__(self):
 
         self.eppictoosjar='/home/eppicweb/software/jars/eppic-dbtools.jar'
         self.eppicpath='/home/eppicweb/software/bin/eppic'
@@ -32,10 +32,11 @@ class UploadTopup:
         newestDirMtime=path.getmtime(newestDirInTopup)
         currentTime = time()
         # sanity check: mtime shouldn't be older than a week
-        if (newestDirMtime<currentTime-7*24*60*60)
+        if (newestDirMtime<currentTime-7*24*60*60):
+            self.writeLog("ERROR: Newest dir in topup dir is older than a week! Exiting")
             print "Newest dir in topup dir is older than a week! Exiting"
             exit(1)
-        # the pdb release date: day when top-up is loaded (will be only a few days off from actual relase day)
+        # the pdb release date: day when top-up is loaded (will be only a few days off from actual release day)
         self.pdbrdate=self.today
         self.workDir="%s/%s"%(self.topupDir,self.today)
         self.checkDate()
@@ -49,13 +50,7 @@ class UploadTopup:
         self.checkJobs()
 
     def checkDate(self):
-        if self.topupDay!=date.today():
-            chk=raw_input("Do you want to proceed the upload part of the topup started on %s [Y/N] :"%(self.topupDay.strftime("%Y-%m-%d")))
-            if chk=="Y" or chk=="y" or chk=="yes":
-                print "Manual upload started for topup started on %s"%(self.topupDay.strftime("%Y-%m-%d"))
-            else:
-                print "Manual upload canceled for topup started on %s"%(self.topupDay.strftime("%Y-%m-%d"))
-                exit(0)
+
         chfld=getstatusoutput("ls %s"%(self.workDir))
         if chfld[0]:
             sys.exit(0)
@@ -235,7 +230,7 @@ class UploadTopup:
         fo.write("\t<img class=\"eppic-iframe-top-img\" src=\"resources/images/eppic-logo.png\">\n")
         fo.write("\t<div class=\"eppic-statistics\">\n")
         fo.write("\t<h1>EPPIC database statistics as of %s</h1>\n"%(self.today))
-        fo.write("\t<h3>Based on UniProt_%s and PDB release as of %s</h3>\n"%(self.version,self.pdbrdate.strftime("%Y-%m-%d")))
+        fo.write("\t<h3>Based on UniProt_%s and PDB release as of %s</h3>\n"%(self.version,self.pdbrdate))
         fo.write("\t<h4>Values in []: absolute and percentual difference between before and after top-up</h4>\n")
         fo.write("\t<h2>Number of entries</h2>\n")
         fo.write("\t<table>\n")
@@ -429,8 +424,5 @@ class UploadTopup:
         self.writeStatistics()
 
 if __name__=="__main__":
-    if len(sys.argv)>1:
-        offsetdays=atoi(sys.argv[1])
-    else:
-        offsetdays=0
-    p=UploadTopup(offsetdays)
+
+    p=UploadTopup()
