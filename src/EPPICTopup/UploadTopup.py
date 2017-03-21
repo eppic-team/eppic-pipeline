@@ -40,7 +40,8 @@ class UploadTopup:
         self.pdbrdate=self.today
         self.workDir="%s/%s"%(self.topupDir,self.today)
         self.checkDate()
-        self.logfile=open("%s/upload_%s.log"%(self.workDir,self.today),'a')
+        # the 0 parameter is for unbuffered file, so that log lines are flushed immediately
+        self.logfile=open("%s/upload_%s.log"%(self.workDir,self.today),'a',0)
         self.getUniprotVersion()
         self.uniprot="uniprot_%s"%(self.version)
         self.eppicdb="eppic_3_0_%s"%(self.version)

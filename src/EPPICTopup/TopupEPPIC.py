@@ -27,7 +27,8 @@ class TopupEPPIC:
         if mkd[0]:
             print "ERROR: Can't create %s"%(self.workDir)
             sys.exit(1)
-        self.logfile=open("%s/topup_%s.log"%(self.workDir,strftime("%Y-%m-%d",localtime())),'a')
+        # the 0 parameter is for unbuffered file, so that log lines are flushed immediately
+        self.logfile=open("%s/topup_%s.log"%(self.workDir,strftime("%Y-%m-%d",localtime())),'a',0)
         self.getUniprotVersion()
         self.uniprot="uniprot_%s"%(self.version)
         self.eppicdb="eppic_3_0_%s"%(self.version)
