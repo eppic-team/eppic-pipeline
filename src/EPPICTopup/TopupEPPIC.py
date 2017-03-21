@@ -8,7 +8,7 @@ Created on Jan 28, 2015
 from time import localtime,strftime
 import sys
 from commands import getstatusoutput
-from re import findall
+#from re import findall
 import MySQLdb
 from string import atof
 from ftplib import FTP
@@ -281,7 +281,7 @@ class TopupEPPIC:
         self.allPDB=[]
         self.updatedPDB=[]
         self.deletedPDB=[]
-        self.writeLog("INFO: " + len(newPDB) " new, " + len(updatedPDB) + " updated, " + len(deletedPDB) " deleted")
+        self.writeLog("INFO: " + len(self.newPDB) + " new, " + len(self.updatedPDB) + " updated, " + len(self.deletedPDB) + " deleted")
     def runAll(self):
         self.getSiftsFile()
         self.prepareInputs()

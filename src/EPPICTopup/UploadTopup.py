@@ -12,7 +12,7 @@ from re import findall
 from commands import getoutput,getstatusoutput
 import MySQLdb
 from string import atof,atoi
-from datetime import date, timedelta
+#from datetime import date, timedelta
 from os import path
 from glob import iglob
 from ntpath import basename
