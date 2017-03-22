@@ -89,7 +89,7 @@ class TopupEPPIC:
         self.deletedPDB=[]
         self.newPDB=[x.strip('\n') for x in f]
         self.updatedPDB=[]
-        self.writeLog("INFO: %d new,%d updated,%d deleted entries found"%(len(self.newPDB),len(self.updatedPDB),len(self.deletedPDB)))
+        self.writeLog("INFO: %d new, %d updated, %d deleted entries found"%(len(self.newPDB),len(self.updatedPDB),len(self.deletedPDB)))
 
     def prepareInputs(self):
         self.writeLog("INFO: preparing input lists")
@@ -282,7 +282,7 @@ class TopupEPPIC:
         self.allPDB=[]
         self.updatedPDB=[]
         self.deletedPDB=[]
-        self.writeLog("INFO: " + len(self.newPDB) + " new, " + len(self.updatedPDB) + " updated, " + len(self.deletedPDB) + " deleted")
+        self.writeLog("INFO: %d new, %d updated, %d deleted"%(len(self.newPDB),len(self.updatedPDB),len(self.deletedPDB)))
     def runAll(self):
         self.getSiftsFile()
         self.prepareInputs()
