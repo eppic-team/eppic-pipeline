@@ -11,35 +11,33 @@ from commands import getstatusoutput
 from re import findall
 import MySQLdb
 from string import atof
+from ftplib import FTP
+
 
 class TopupEPPIC:
-    
+
     def __init__(self):
-        self.mysqluser='eppicweb'
-        self.mysqlhost='localhost'
-        self.mysqlpasswd=''
         self.eppicpath='/home/eppicweb/software/bin/eppic'
         self.eppicconf='/home/eppicweb/.eppic.conf'
         self.pdbrepo="/data/dbs/pdb"
         self.topupDir="/home/eppicweb/topup"
-        self.today=strftime("%d-%m-%Y",localtime())
+        self.today=strftime("%Y-%m-%d",localtime())
         self.workDir="%s/%s"%(self.topupDir,self.today)
         mkd=getstatusoutput("mkdir %s"%(self.workDir))
         if mkd[0]:
             print "ERROR: Can't create %s"%(self.workDir)
             sys.exit(1)
-        self.logfile=open("%s/topup_%s.log"%(self.workDir,strftime("%d%m%Y",localtime())),'a')
+        self.logfile=open("%s/topup_%s.log"%(self.workDir,strftime("%Y-%m-%d",localtime())),'a')
         self.getUniprotVersion()
         self.uniprot="uniprot_%s"%(self.version)
-        self.eppicdb="eppic_%s"%(self.version)
-        self.mysqldb=self.eppicdb
+        self.eppicdb="eppic_3_0_%s"%(self.version)
         self.createTopupfolder()
-        getfile=getstatusoutput('ls -tr %s'%(self.pdbrepo))
-        if getfile[0]:
-            self.writeLog("ERROR: Can't get the latest PDB rsync log file in %s"%(self.pdbrepo))
-            sys.exit(1)
-        self.rsyncfile="%s/%s"%(self.pdbrepo,getfile[1].split("\n")[-1])
-        
+        #filesInRsyncDir=getstatusoutput('ls -tr %s'%(self.pdbrepo))
+        #if filesInRsyncDir[0]:
+        #    self.writeLog("ERROR: Can't get the latest PDB rsync log file in %s"%(self.pdbrepo))
+        #    sys.exit(1)
+        #self.rsyncfile="%s/%s"%(self.pdbrepo, filesInRsyncDir[1].split("\n")[-1])
+
     def getUniprotVersion(self):
         universion=getstatusoutput("cat %s | grep LOCAL_UNIPROT_DB_NAME"%(self.eppicconf))
         if universion[0]:
@@ -48,8 +46,8 @@ class TopupEPPIC:
         else:
             self.version=universion[1].split("uniprot_")[-1]
             self.writeLog("INFO: UniProt version : %s"%(self.version))
-        
-        
+
+
     def createTopupfolder(self):
         self.inputDir="%s/input"%(self.workDir)
         mkd=getstatusoutput("mkdir %s"%(self.inputDir))
@@ -83,17 +81,15 @@ class TopupEPPIC:
         if mkd[0]:
             self.writeLog("ERROR: Can't create %s"%(self.qsubDir))
             sys.exit(1)
-        
-    def parsePDBrsyncfile(self):
-        self.writeLog("INFO: Parsing PDB rsync file")
-        f=open(self.rsyncfile,'r').read()
-        self.deletedPDB=findall(r'deleting\s*mmCIF/\S+/(\S+).cif.gz\s+',f)
-        self.newPDB=findall(r'mmCIF/\S+.cif.gz -> ../../divided/mmCIF/\S+/(\S+).cif.gz\s+', f)
-        self.allPDB=list(set(findall(r'mmCIF/\S+/(\S+).cif.gz\s+', f)))
-        self.updatedPDB=[i for i in self.allPDB if i not in self.newPDB and i not in self.deletedPDB]
+
+    def parseInpuListFile(self, inputlistfile):
+        self.writeLog("INFO: Getting new list from input list")
+        f=open(inputlistfile,'r').readlines()
+        self.deletedPDB=[]
+        self.newPDB=[x.strip('\n') for x in f]
+        self.updatedPDB=[]
         self.writeLog("INFO: %d new,%d updated,%d deleted entries found"%(len(self.newPDB),len(self.updatedPDB),len(self.deletedPDB)))
-        
-        
+
     def prepareInputs(self):
         self.writeLog("INFO: preparing input lists")
         self.pdbinput="%s/pdbinput_%s.list"%(self.inputDir,self.today)
@@ -110,7 +106,7 @@ class TopupEPPIC:
         fo.write("%s\n"%("\n".join(self.deletedPDB)))
         fo.close()
         self.writeLog("INFO: input lists prepared")
-        
+
     def writeQsubscript(self):
         self.qsubscript="%s/topup_%s.sh"%(self.qsubDir,self.today)
         fo=open(self.qsubscript,'w')
@@ -125,11 +121,11 @@ class TopupEPPIC:
         fo.write("if [ ! -d %s/data/all ]; then mkdir  %s/data/all; fi\n"%(self.outputDir,self.outputDir))
         fo.write("cd %s/data/all/\n"%(self.outputDir))
         fo.write("ln -s ../divided/$mid_pdb/$pdb $pdb\n")
-        fo.write("%s -i $pdb -a 1 -s -o %s/data/divided/$mid_pdb/$pdb -l -w -g %s\n"%(self.eppicpath,self.outputDir,self.eppicconf))
+        fo.write("%s -i $pdb -a 1 -s -o %s/data/divided/$mid_pdb/$pdb -l -w -P -g %s\n"%(self.eppicpath,self.outputDir,self.eppicconf))
         fo.write("cp %s/logs/topup.e${JOB_ID}.${SGE_TASK_ID} %s/data/divided/$mid_pdb/$pdb/$pdb.e\n"%(self.outputDir,self.outputDir))
         fo.write("cp %s/logs/topup.o${JOB_ID}.${SGE_TASK_ID} %s/data/divided/$mid_pdb/$pdb/$pdb.o\n"%(self.outputDir,self.outputDir))
         fo.close()
-    
+
     def submitJobs(self):
         self.writeLog("INFO: Submitting jobs")
         if (len(self.newPDB)+len(self.updatedPDB))<1000:
@@ -145,21 +141,21 @@ class TopupEPPIC:
             self.writeLog("WARNING: more than 1000 jobs found.Jobs not submitted. Manually submit %s"%(self.qsubscript))
             mm="more than 1000 jobs found.Jobs not submitted. Manually submit %s"%(self.qsubscript)
             self.sendMessage(mm)
-    
+
     def writeLog(self,msg):
-        t=strftime("%d-%m-%Y_%H:%M:%S",localtime())
+        t=strftime("%Y-%m-%d_%H:%M:%S",localtime())
         self.logfile.write("%s\t%s\n"%(t,msg))
         #print "%s\t%s\n"%(t,msg)
-        
+
     def connectDatabase(self):
         self.writeLog("INFO: Connecting to MySQL database")
         try:
-            self.cnx=MySQLdb.connect(user=self.mysqluser,host=self.mysqlhost,passwd=self.mysqlpasswd,db=self.mysqldb)
+            self.cnx=MySQLdb.connect(read_default_file="~/.my.cnf",db=self.eppicdb)
             self.cursor=self.cnx.cursor()
         except:
             self.writeLog("ERROR:Can't connect to mysql database")
             sys.exit(1)
-      
+
     def runQuery(self,sqlquery):
         try:
             self.cursor.execute(sqlquery)
@@ -228,13 +224,13 @@ class TopupEPPIC:
             fo.write("%s\t%d\n"%(ent[0],int(ent[1])))
         fo.close()
         self.writeLog("INFO: previous statistics file written")
-    
-    def getShiftsFile(self):
-        self.writeLog("INFO: downloading latest SHIFTS file")
+
+    def getSiftsFile(self):
+        self.writeLog("INFO: downloading latest SIFTS file")
         cmd="curl -s ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/text/pdb_chain_uniprot.lst > /data/dbs/uniprot/%s/pdb_chain_uniprot.lst"%(self.uniprot)
         chk=getstatusoutput(cmd)
         if chk[0]:
-            self.writeLog("ERROR: Can't download the latest SHIFTS file")
+            self.writeLog("ERROR: Can't download the latest SIFTS file")
             sys.exit(1)
     def sendMessage(self,mailmessage):
         #print mailmessage
@@ -245,14 +241,54 @@ class TopupEPPIC:
             self.writeLog("WARNING: Can't send the message through mail")
         else:
             self.writeLog("INFO: message sent through mail")
+    def getList(self):
+        cnx = MySQLdb.connect(read_default_file="~/.my.cnf",db=self.eppicdb)
+        cursor = cnx.cursor()
 
+        query = ("SELECT jobId FROM Job;")
+
+        cursor.execute(query)
+
+        allDbIds=[]
+
+        for (row) in cursor:
+            allDbIds.append(row[0])
+        cursor.close()
+        cnx.close()
+        return allDbIds
+    def getListFromPdbFtp(self):
+        localfilename=self.workDir+"/all_pdb_ids.list"
+        file = open(localfilename, 'wb')
+        ftpserver="ftp.wwpdb.org"
+        ftp = FTP(ftpserver)
+        ftp.login()
+        filename="pub/pdb/derived_data/pdb_entry_type.txt"
+        ftp.retrbinary('RETR %s' % filename, file.write)
+        file = open(localfilename, "r")
+        allIds=[]
+        for line in file:
+            allIds.append(line.split("\t")[0])
+        return allIds
+    def getMissingIds(self):
+        """
+        Gets all ids from pdb ftp and all ids from our db and finds the diff
+        assigning it to self.newPDB
+        """
+        allDbIds=sorted(self.getList())
+        allIds=set(sorted(self.getListFromPdbFtp()))
+        diff=list(allIds.difference(allDbIds))
+        self.newPDB=diff
+        self.allPDB=[]
+        self.updatedPDB=[]
+        self.deletedPDB=[]
+        self.writeLog("INFO: " + len(newPDB) " new, " + len(updatedPDB) + " updated, " + len(deletedPDB) " deleted")
     def runAll(self):
-        self.parsePDBrsyncfile()
-        self.getShiftsFile()
+        self.getSiftsFile()
         self.prepareInputs()
         self.writeQsubscript()
         self.getPreviousStat()
         self.submitJobs()
 if __name__=="__main__":
     p=TopupEPPIC()
+    p.getMissingIds()
     p.runAll()
