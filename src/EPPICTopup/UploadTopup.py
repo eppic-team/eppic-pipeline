@@ -12,7 +12,7 @@ from re import findall
 from commands import getoutput,getstatusoutput
 import MySQLdb
 from string import atof,atoi
-#from datetime import date, timedelta
+# from datetime import date, timedelta
 from os import path
 from glob import iglob
 from ntpath import basename
@@ -52,14 +52,15 @@ class UploadTopup:
 
     def checkDate(self):
 
+        print "Checking if workdir %s exists"%self.workDir
         chfld=getstatusoutput("ls %s"%(self.workDir))
         if chfld[0]:
             sys.exit(0)
         else:
+            print "Checking if statistics file %s/statistics_%s.html exists"%(self.workDir,self.today)
             chfkd2=getstatusoutput("ls %s/statistics_%s.html"%(self.workDir,self.today))
             if chfkd2[0]==0:
                 sys.exit(0)
-
 
     def checkJobs(self):
         qstatdump=getoutput('source /var/lib/gridengine/default/common/settings.sh;qstat -u eppicweb -q topup.q')
@@ -89,7 +90,6 @@ class UploadTopup:
             self.writeLog("ERROR: Something wrong !")
             sys.exit(1)
 
-
     def writeLog(self,msg):
         t=strftime("%Y-%m-%d_%H:%M:%S",localtime())
         self.logfile.write("%s\t%s\n"%(t,msg))
@@ -104,7 +104,6 @@ class UploadTopup:
             self.version=universion[1].split("uniprot_")[-1]
             #self.writeLog("INFO: UniProt version : %s"%(self.version))
 
-
     def rsyncFolder(self):
         self.writeLog("INFO: synchronizing %s/output/data/divided to %s/divided"%(self.workDir,self.filesDir))
         rsynccmd="rsync -az %s/output/data/divided %s/"%(self.workDir,self.filesDir)
@@ -114,7 +113,6 @@ class UploadTopup:
             sys.exit(1)
         else:
             self.writeLog("INFO: synchronizing %s/output/data/divided to %s/divided Done!"%(self.workDir,self.filesDir))
-
 
     def uploadFiles(self):
         uploadcmd="java -jar %s UploadToDb -D %s -d %s/ -l -f %s/input/pdbinput_%s.list -F  > /dev/null"%(self.eppictoosjar,self.eppicdb,self.filesDir,self.workDir,self.today)
@@ -137,6 +135,7 @@ class UploadTopup:
             if ck2[0]:
                 self.writeLog("ERROR: Can't sent mail about more than 20 obsolete entries")
                 sys.exit(1)
+
     def connectDatabase(self):
         #self.writeLog("INFO: Connecting to MySQL database")
         try:
@@ -145,6 +144,7 @@ class UploadTopup:
         except:
             self.writeLog("ERROR:Can't connect to mysql database")
             sys.exit(1)
+
     def runQuery(self,sqlquery):
         try:
             self.cursor.execute(sqlquery)
@@ -154,7 +154,6 @@ class UploadTopup:
             queryout=-1
             sys.exit(1)
         return queryout
-
 
     def writeStatistics(self):
         new=atof(getoutput("cat %s/input/newPDB_%s.list | wc -w"%(self.workDir,self.today)))
@@ -371,6 +370,7 @@ class UploadTopup:
         fo.write("</div>\n")
         fo.write("</body>\n</html>")
         fo.close()
+
     def sendMessage(self):
         if len(self.runningJobs)==1:
             mailmessage="Job Id %s is still running "%(" ".join(self.runningJobs))
@@ -385,6 +385,7 @@ class UploadTopup:
             self.writeLog("ERROR: Can't send status message via mail")
         else:
             self.writeLog("INFO: status message via mail")
+
     def sendReport(self):
         mailmessage2="All jobs finished successfully. Please see the attachment"
         #mailmessage2="This is a test"
@@ -403,10 +404,6 @@ class UploadTopup:
                 sys.exit(1)
             else:
                 self.writeLog("INFO: Finished sucessfully and report sent")
-
-
-
-
 
     def runAll(self):
         self.rsyncFolder()
