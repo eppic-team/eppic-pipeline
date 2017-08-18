@@ -41,6 +41,7 @@ class UploadTopup:
         self.workDir="%s/%s"%(self.topupDir,self.today)
         self.checkDate()
         # the 0 parameter is for unbuffered file, so that log lines are flushed immediately
+        print "Will log to file %s/upload_%s.log"%(self.workDir,self.today)
         self.logfile=open("%s/upload_%s.log"%(self.workDir,self.today),'a',0)
         self.getUniprotVersion()
         self.uniprot="uniprot_%s"%(self.version)
@@ -53,13 +54,16 @@ class UploadTopup:
     def checkDate(self):
 
         print "Checking if workdir %s exists"%self.workDir
-        chfld=getstatusoutput("ls %s"%(self.workDir))
+        chfld=getstatusoutput("ls %s"%self.workDir)
         if chfld[0]:
+            # I have no clue why this is here, but funnily even if dir exists it doesn't reach this - JD 2017-08-18
+            print "Workdir exists, exiting"
             sys.exit(0)
         else:
             print "Checking if statistics file %s/statistics_%s.html exists"%(self.workDir,self.today)
             chfkd2=getstatusoutput("ls %s/statistics_%s.html"%(self.workDir,self.today))
             if chfkd2[0]==0:
+                print "Statistics file exists, exiting"
                 sys.exit(0)
 
     def checkJobs(self):
